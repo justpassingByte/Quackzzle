@@ -444,12 +444,12 @@ export default function GameClient({ gameCode }: GameClientProps) {
           <h2 className="text-2xl font-bold mb-4">Đang chờ người chơi...</h2>
           <p className="text-gray-200 mb-4">Mã game: {game.gameCode}</p>
           {isHost ? (
-            <button
+            <Button
               onClick={handleStartGame}
               className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded"
             >
               Bắt đầu game
-            </button>
+            </Button>
           ) : (
             <p className="text-gray-300">Đang chờ host bắt đầu game...</p>
           )}
