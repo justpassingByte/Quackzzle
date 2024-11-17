@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Question {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  content       String
+  options       String[]
+  correctAnswer String
+  category      String
+  createdBy     String
+  createdAt     DateTime @default(now())
+  games         Game[]   @relation("QuestionToGame", fields: [gameIds], references: [id])
+  gameIds       String[] @db.ObjectId
+}
+
+model Game {
+  id              String     @id @default(auto()) @map("_id") @db.ObjectId
+  gameCode        String     @unique
+  hostId          String
+  status          String     @default("WAITING")
+  currentRound    Int        @default(0)
+  completedPlayers String[]  @default([])
+  players         Player[]
+  questions       Question[] @relation("QuestionToGame", fields: [questionIds], references: [id])
+  questionIds     String[]   @db.ObjectId
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+}
+
+model Player {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  score     Int      @default(0)
+  timeSpent Int      @default(0)
+  game      Game     @relation(fields: [gameId], references: [id])
+  gameId    String   @db.ObjectId
+  answers   Answer[]
+}
+
+model Answer {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  content    String
+  isCorrect  Boolean
+  timeSpent  Int
+  player     Player   @relation(fields: [playerId], references: [id])
+  playerId   String   @db.ObjectId
+  createdAt  DateTime @default(now())
+}
