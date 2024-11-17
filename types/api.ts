@@ -34,3 +34,25 @@ export interface CreateQuestionRequest {
   category: string;
   createdBy: string;
 }
+
+export interface Question {
+  id: string;
+  content: string;
+  options: string[];
+  correctAnswer: string;
+  category: string;
+}
+
+export interface Player {
+  id: string;
+  name: string;
+  score?: number;
+  isHost?: boolean;
+}
+
+export interface Game {
+  status: 'WAITING' | 'PLAYING' | 'FINISHED';
+  questions: Question[];
+  currentRound: number;
+  players: Player[];
+}

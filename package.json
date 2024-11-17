@@ -10,15 +10,20 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@radix-ui/react-progress": "^1.1.0",
     "axios": "^1.7.7",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "nanoid": "^5.0.8",
-    "next": "15.0.3",
+    "next": "14.0.4",
     "prisma": "^5.22.0",
-    "react": "19.0.0-rc-66855b96-20241106",
-    "react-dom": "19.0.0-rc-66855b96-20241106",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
+    "tailwind-merge": "^2.5.4",
+    "tailwindcss-animate": "^1.0.7",
     "zustand": "^4.4.7"
   },
   "devDependencies": {
@@ -27,10 +32,11 @@
     "@types/react-dom": "^18",
     "@types/socket.io": "^3.0.2",
     "@types/socket.io-client": "^3.0.0",
+    "autoprefixer": "^10.4.20",
     "eslint": "^8",
-    "eslint-config-next": "15.0.3",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
+    "eslint-config-next": "14.0.4",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
     "typescript": "^5"
   }
 }

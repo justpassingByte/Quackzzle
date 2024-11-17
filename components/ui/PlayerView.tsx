@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardHeader, CardContent } from '@/components/ui/card'
-import { QuestionCard } from '../game/QuestionCard'
+import { Card, CardHeader, CardContent } from '@/components/ui/Card'
+
 import { Leaderboard } from './Leaderboard'
-import { Game, Question } from '@/types/game'
+import { Game, } from '@/types/api'
+import { Question } from '../game/QuestionCard'
 
 interface PlayerViewProps {
   game: Game;
@@ -27,10 +28,14 @@ export function PlayerView({ game, onAnswer }: PlayerViewProps) {
         </CardHeader>
         <CardContent>
           {game.status === 'PLAYING' && currentQuestion && (
-            <QuestionCard
-              question={currentQuestion}
+            <Question
+              content={currentQuestion.content}
+              options={currentQuestion.options}
               onAnswer={onAnswer}
-              timeLimit={60}
+              timeLeft={60}
+              currentQuestion={0}
+              totalQuestions={1}
+              isAnswered={false}
             />
           )}
           {game.status === 'FINISHED' && (
