@@ -56,26 +56,27 @@ const CreateGame = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-b from-blue-500 to-purple-600">
-      <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center mb-6">Tạo Game Mới</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="bg-white/80 backdrop-blur-sm p-8 rounded-xl shadow-lg w-full max-w-md border border-purple-100">
+        <h1 className="text-3xl font-bold text-center mb-6 text-gray-800">Tạo Game Mới</h1>
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="bg-red-50/80 backdrop-blur-sm border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4">
             {error}
           </div>
         )}
-        <form onSubmit={handleCreateGame} className="space-y-4">
+        <form onSubmit={handleCreateGame} className="space-y-6">
           <Input
             label="Tên của bạn"
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
             placeholder="Nhập tên của bạn"
             required
+            className="bg-white/60 focus:bg-white/90 border-purple-100"
           />
           <Button 
             type="submit" 
             isLoading={loading} 
-            className="w-full"
+            className="w-full shadow-md hover:shadow-lg transition-all bg-indigo-500 hover:bg-indigo-600"
           >
             {loading ? 'Đang tạo...' : 'Tạo Game'}
           </Button>

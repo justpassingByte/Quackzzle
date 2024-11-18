@@ -10,27 +10,27 @@ datasource db {
 model Question {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   content       String
+  image         String?
   options       String[]
   correctAnswer String
   category      String
   createdBy     String
   createdAt     DateTime @default(now())
-  games         Game[]   @relation("QuestionToGame", fields: [gameIds], references: [id])
-  gameIds       String[] @db.ObjectId
+  game          Game?    @relation(fields: [gameId], references: [id])
+  gameId        String?  @db.ObjectId
 }
 
 model Game {
-  id              String     @id @default(auto()) @map("_id") @db.ObjectId
-  gameCode        String     @unique
-  hostId          String
-  status          String     @default("WAITING")
-  currentRound    Int        @default(0)
-  completedPlayers String[]  @default([])
-  players         Player[]
-  questions       Question[] @relation("QuestionToGame", fields: [questionIds], references: [id])
-  questionIds     String[]   @db.ObjectId
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  id               String     @id @default(auto()) @map("_id") @db.ObjectId
+  gameCode         String     @unique
+  hostId           String
+  status           String     @default("WAITING")
+  currentRound     Int        @default(0)
+  completedPlayers String[]   @default([])
+  players          Player[]
+  questions        Question[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime?
 }
 
 model Player {

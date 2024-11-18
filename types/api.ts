@@ -29,6 +29,7 @@ export interface UpdateGameStatusRequest {
 
 export interface CreateQuestionRequest {
   content: string;
+  image?: string;
   options: string[];
   correctAnswer: string;
   category: string;
@@ -38,9 +39,12 @@ export interface CreateQuestionRequest {
 export interface Question {
   id: string;
   content: string;
+  image?: string;
   options: string[];
   correctAnswer: string;
   category: string;
+  createdBy: string;
+  createdAt: Date;
 }
 
 export interface Player {

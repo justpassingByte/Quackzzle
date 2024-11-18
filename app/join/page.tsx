@@ -40,23 +40,24 @@ export default function JoinGame() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-b from-blue-500 to-purple-600">
-      <div className="bg-white/10 backdrop-blur-sm p-8 rounded-lg shadow-lg w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center mb-6 text-white">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+      <div className="bg-white/80 backdrop-blur-sm p-8 rounded-xl shadow-lg w-full max-w-md border border-purple-100">
+        <h1 className="text-3xl font-bold text-center mb-6 text-gray-800">
           Tham Gia Game
         </h1>
         {error && (
-          <div className="bg-red-500/20 border border-red-400 text-red-100 px-4 py-3 rounded mb-4">
+          <div className="bg-red-50/80 backdrop-blur-sm border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4">
             {error}
           </div>
         )}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <Input
             label="Mã Game"
             value={gameCode}
             onChange={(e) => setGameCode(e.target.value.toUpperCase())}
             placeholder="Nhập mã game"
             required
+            className="bg-white/60 focus:bg-white/90 border-purple-100 uppercase"
           />
           <Input
             label="Tên của bạn"
@@ -64,12 +65,13 @@ export default function JoinGame() {
             onChange={(e) => setPlayerName(e.target.value)}
             placeholder="Nhập tên của bạn"
             required
+            className="bg-white/60 focus:bg-white/90 border-purple-100"
           />
           <Button 
             type="submit" 
             variant="secondary" 
             isLoading={loading} 
-            className="w-full"
+            className="w-full shadow-md hover:shadow-lg transition-all bg-purple-500 hover:bg-purple-600"
           >
             {loading ? 'Đang tham gia...' : 'Tham Gia'}
           </Button>

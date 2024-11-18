@@ -12,6 +12,16 @@ export async function GET(req: Request) {
       skip: Math.max(0, Math.floor(Math.random() * (totalQuestions - 10))),
       orderBy: {
         createdAt: 'desc'
+      },
+      select: {
+        id: true,
+        content: true,
+        image: true,
+        options: true,
+        correctAnswer: true,
+        category: true,
+        createdBy: true,
+        createdAt: true
       }
     })
 

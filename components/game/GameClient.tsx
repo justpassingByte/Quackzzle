@@ -262,10 +262,10 @@ export default function GameClient({ gameCode }: GameClientProps) {
     if (!currentPlayer) return null
 
     return (
-      <div className="bg-white/5 p-4 rounded-lg mb-4">
+      <div className="bg-white rounded-lg shadow-sm p-4 mb-4 border border-gray-200">
         <div className="flex justify-between items-center">
-          <span>Điểm của bạn:</span>
-          <span className="font-bold text-xl text-blue-400">
+          <span className="text-gray-700">Điểm của bạn:</span>
+          <span className="font-bold text-xl text-blue-600">
             {currentPlayer.score || 0}
           </span>
         </div>
@@ -440,19 +440,33 @@ export default function GameClient({ gameCode }: GameClientProps) {
     // Nếu đang chờ
     if (game.status === 'WAITING') {
       return (
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center text-white">
-          <h2 className="text-2xl font-bold mb-4">Đang chờ người chơi...</h2>
-          <p className="text-gray-200 mb-4">Mã game: {game.gameCode}</p>
-          {isHost ? (
-            <Button
-              onClick={handleStartGame}
-              className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded"
-            >
-              Bắt đầu game
-            </Button>
-          ) : (
-            <p className="text-gray-300">Đang chờ host bắt đầu game...</p>
-          )}
+        <div className="bg-white/80 backdrop-blur-sm rounded-lg p-8 text-center shadow-lg border border-purple-100">
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800">Đang chờ người chơi...</h2>
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-gray-600">
+                Chia sẻ mã game cho bạn bè:
+              </p>
+              <div className="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-lg">
+                <span className="text-2xl font-mono font-semibold text-indigo-600">
+                  {game.gameCode}
+                </span>
+              </div>
+            </div>
+            
+            {isHost ? (
+              <Button
+                onClick={handleStartGame}
+                className="mt-4 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all"
+              >
+                Bắt đầu game
+              </Button>
+            ) : (
+              <p className="mt-4 text-gray-600 italic">
+                Đang chờ host bắt đầu game...
+              </p>
+            )}
+          </div>
         </div>
       );
     }
@@ -504,6 +518,7 @@ export default function GameClient({ gameCode }: GameClientProps) {
           <Question
             content={game.questions[currentQuestion].content}
             options={game.questions[currentQuestion].options}
+            image={game.questions[currentQuestion].image}
             timeLeft={timeLeft}
             onAnswer={handleAnswer}
             disabled={hasAnswered}
@@ -528,7 +543,7 @@ export default function GameClient({ gameCode }: GameClientProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-2xl text-white">Đang tải...</div>
+        <div className="text-2xl text-gray-800">Đang tải...</div>
       </div>
     )
   }
@@ -536,7 +551,9 @@ export default function GameClient({ gameCode }: GameClientProps) {
   if (error) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-red-300">Lỗi: {error}</div>
+        <div className="text-red-600 bg-red-50 p-4 rounded-lg border border-red-200">
+          Lỗi: {error}
+        </div>
       </div>
     )
   }
@@ -544,7 +561,7 @@ export default function GameClient({ gameCode }: GameClientProps) {
   if (!game) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-2xl text-white">Không tìm thấy game</div>
+        <div className="text-2xl text-gray-800">Không tìm thấy game</div>
       </div>
     )
   }
@@ -552,24 +569,34 @@ export default function GameClient({ gameCode }: GameClientProps) {
   console.log('Game object:', game);
 
   return (
-    <div className="grid grid-cols-3 gap-6">
-      {/* Sidebar */}
-      <div className="col-span-1">
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 mb-4 text-white">
-          <p>Trạng thái: {game?.status}</p>
-          {game?.status === 'PLAYING' && !isHost && (
-            <CurrentPlayerScore />
-          )}
+    <div className="p-4 max-w-7xl mx-auto">
+      <div className="grid lg:grid-cols-3 gap-6 md:grid-cols-1">
+        {/* Sidebar */}
+        <div className="lg:col-span-1 md:order-2">
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 mb-4 shadow-sm border border-purple-100">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">Trạng thái:</span>
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                game?.status === 'WAITING' ? 'bg-yellow-100 text-yellow-800' :
+                game?.status === 'PLAYING' ? 'bg-green-100 text-green-800' :
+                'bg-gray-100 text-gray-800'
+              }`}>
+                {game?.status === 'WAITING' && 'Đang chờ'}
+                {game?.status === 'PLAYING' && 'Đang chơi'}
+                {game?.status === 'FINISHED' && 'Đã kết thúc'}
+              </span>
+            </div>
+          </div>
+          <PlayerList 
+            players={game?.players || []} 
+            currentUserId={currentUserId}
+          />
         </div>
-        <PlayerList 
-          players={game?.players || []} 
-          currentUserId={currentUserId}
-        />
-      </div>
 
-      {/* Main content */}
-      <div className="col-span-2">
-        {renderMainContent()}
+        {/* Main content */}
+        <div className="lg:col-span-2 md:order-1">
+          {renderMainContent()}
+        </div>
       </div>
     </div>
   )

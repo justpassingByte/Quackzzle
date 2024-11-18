@@ -1,3 +1,5 @@
+import { Button } from "../ui/Button"
+
 interface GameResultProps {
     players: Array<{
       id: string
@@ -29,51 +31,49 @@ interface GameResultProps {
     }
     
     return (
-      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-white">
-        <h2 className="text-2xl font-bold mb-6 text-center">🎮 Bảng xếp hạng 🏆</h2>
+      <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-purple-100">
+        <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">🎮 Bảng xếp hạng 🏆</h2>
         
         {/* Người chiến thắng */}
         {sortedPlayers.length > 0 && (
-          <div className="mb-8 text-center">
-            <div className="text-yellow-400 text-lg mb-2">🏆 Người chiến thắng</div>
-            <div className="text-2xl font-bold">{sortedPlayers[0].name}</div>
-            <div className="text-yellow-400 font-bold text-xl">
+          <div className="mb-8 text-center p-6 bg-yellow-50/80 backdrop-blur-sm rounded-lg border border-yellow-200">
+            <div className="text-yellow-700 text-lg mb-2">🏆 Người chiến thắng</div>
+            <div className="text-2xl font-bold text-gray-800">{sortedPlayers[0].name}</div>
+            <div className="text-yellow-600 font-bold text-xl">
               {sortedPlayers[0].score} điểm
             </div>
           </div>
         )}
   
         {/* Bảng xếp hạng */}
-        <div className="space-y-3 mb-8">
-          <div className="grid grid-cols-4 text-sm text-gray-400 pb-2 border-b border-white/10">
-            <div>Hạng</div>
-            <div className="col-span-2">Người chơi</div>
-            <div className="text-right">Điểm</div>
-          </div>
+        <div className="space-y-3">
           {sortedPlayers.map((player, index) => (
             <div 
               key={player.id}
               className={`
-                grid grid-cols-4 items-center p-3 rounded-lg
-                ${index === 0 ? 'bg-yellow-500/20' : 'bg-white/5'}
+                p-4 rounded-lg transition-all duration-200
+                ${index === 0 
+                  ? 'bg-yellow-50/80 border border-yellow-200' 
+                  : player.id === currentUserId 
+                    ? 'bg-indigo-50/80 border border-indigo-200'
+                    : 'bg-white/60 border border-purple-100'
+                }
+                hover:bg-white/90
               `}
             >
-              {/* Hạng */}
-              <div className="font-bold">
-                {index === 0 && '🥇'}
-                {index === 1 && '🥈'}
-                {index === 2 && '🥉'}
-                {index > 2 && `#${index + 1}`}
-              </div>
-              
-              {/* Tên người chơi */}
-              <div className="col-span-2">
-                <div className="font-bold">{player.name}</div>
-              </div>
-              
-              {/* Điểm */}
-              <div className="text-right font-bold">
-                {player.score}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">
+                    {index === 0 && '🥇'}
+                    {index === 1 && '🥈'}
+                    {index === 2 && '🥉'}
+                    {index > 2 && `#${index + 1}`}
+                  </span>
+                  <span className="font-bold text-gray-800">{player.name}</span>
+                </div>
+                <span className="font-bold text-xl text-blue-600">
+                  {player.score || 0}
+                </span>
               </div>
             </div>
           ))}
@@ -81,17 +81,14 @@ interface GameResultProps {
   
         {/* Nút chơi lại */}
         {isHost && (
-          <div className="text-center">
-            <button
+          <div className="text-center mt-8">
+            <Button
               onClick={onRestart}
-              className="
-                bg-blue-500 hover:bg-blue-600 active:bg-blue-700
-                text-white font-bold py-2 px-6 rounded-lg
-                transition duration-200
-              "
+              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg
+                shadow-md hover:shadow-lg transition-all duration-200"
             >
               Chơi lại
-            </button>
+            </Button>
           </div>
         )}
       </div>
