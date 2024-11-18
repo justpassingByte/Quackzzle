@@ -237,10 +237,12 @@ export default function GameClient({ gameCode }: GameClientProps) {
         setScoreEarned(data.data.scoreEarned);
 
         if (isLastQuestion) {
-          setShowCongrats(true);
-          if (currentUserId) {
-            setCompletedPlayers(prev => new Set([...prev, currentUserId]));
-          }
+          setTimeout(() => {
+            setShowCongrats(true);
+            if (currentUserId) {
+              setCompletedPlayers(prev => new Set([...prev, currentUserId]));
+            }
+          }, 2000);
         } else {
           setTimeout(() => {
             setSelectedAnswer('');

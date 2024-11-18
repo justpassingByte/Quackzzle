@@ -26,7 +26,9 @@ export async function POST(request: Request) {
         hostId,
         status: 'WAITING',
         currentRound: 0,
-        questionIds: [] // Mảng rỗng ban đầu
+        questions: {
+          create: []
+        }
       }
     })
 

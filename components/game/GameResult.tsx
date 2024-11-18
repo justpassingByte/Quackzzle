@@ -18,11 +18,11 @@ interface GameResultProps {
     
     if (!isHost && currentPlayer) {
       return (
-        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-white">
+        <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-gray-800">
           <h2 className="text-2xl font-bold mb-6 text-center">🎮 Điểm của bạn 🏆</h2>
           <div className="text-center mb-6">
             <div className="text-xl font-bold">{currentPlayer.name}</div>
-            <div className="text-yellow-400 font-bold text-xl">
+            <div className="text-yellow-600 font-bold text-xl">
               {currentPlayer.score} điểm
             </div>
           </div>
