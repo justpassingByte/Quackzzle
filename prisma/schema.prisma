@@ -15,9 +15,23 @@ model Question {
   correctAnswer String
   category      String
   createdBy     String
+  questionSet   String?
   createdAt     DateTime @default(now())
   game          Game?    @relation(fields: [gameId], references: [id])
   gameId        String?  @db.ObjectId
+  answerImage   String?
+  playerQuestions PlayerQuestion[]
+}
+model PlayerQuestion {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  player     Player   @relation(fields: [playerId], references: [id])
+  playerId   String   @db.ObjectId
+  game       Game     @relation(fields: [gameId], references: [id])
+  gameId     String   @db.ObjectId
+  question   Question @relation(fields: [questionId], references: [id])
+  questionId String   @db.ObjectId
+
+  @@unique([playerId, gameId, questionId])
 }
 
 model Game {
@@ -28,9 +42,10 @@ model Game {
   currentRound     Int        @default(0)
   completedPlayers String[]   @default([])
   players          Player[]
-  questions        Question[]
   createdAt        DateTime   @default(now())
   updatedAt        DateTime?
+  questions        Question[]
+  playerQuestions  PlayerQuestion[]
 }
 
 model Player {
@@ -41,6 +56,7 @@ model Player {
   game      Game     @relation(fields: [gameId], references: [id])
   gameId    String   @db.ObjectId
   answers   Answer[]
+  playerQuestions PlayerQuestion[]
 }
 
 model Answer {

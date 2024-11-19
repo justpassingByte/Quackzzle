@@ -32,6 +32,7 @@ export interface CreateQuestionRequest {
   image?: string;
   options: string[];
   correctAnswer: string;
+  questionSet: string;
   category: string;
   createdBy: string;
 }
@@ -42,6 +43,7 @@ export interface Question {
   image?: string;
   options: string[];
   correctAnswer: string;
+  questionSet: string;
   category: string;
   createdBy: string;
   createdAt: Date;
@@ -56,7 +58,7 @@ export interface Player {
 
 export interface Game {
   status: 'WAITING' | 'PLAYING' | 'FINISHED';
-  questions: Question[];
+  playerQuestions: Record<string, Question[]>;
   currentRound: number;
   players: Player[];
 }

@@ -5,9 +5,26 @@ import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
   try {
-    const totalQuestions = await prisma.question.count()
+    const url = new URL(req.url)
+    const questionSet = url.searchParams.get('questionSet')
+    
+    if (!questionSet) {
+      return NextResponse.json({
+        success: false,
+        error: 'Question set is required'
+      }, { status: 400 })
+    }
+
+    const totalQuestions = await prisma.question.count({
+      where: {
+        questionSet: questionSet
+      }
+    })
     
     const questions = await prisma.question.findMany({
+      where: {
+        questionSet: questionSet
+      },
       take: 10,
       skip: Math.max(0, Math.floor(Math.random() * (totalQuestions - 10))),
       orderBy: {

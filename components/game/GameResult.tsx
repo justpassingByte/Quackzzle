@@ -35,15 +35,15 @@ interface GameResultProps {
         <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">🎮 Bảng xếp hạng 🏆</h2>
         
         {/* Người chiến thắng */}
-        {sortedPlayers.length > 0 && (
-          <div className="mb-8 text-center p-6 bg-yellow-50/80 backdrop-blur-sm rounded-lg border border-yellow-200">
-            <div className="text-yellow-700 text-lg mb-2">🏆 Người chiến thắng</div>
-            <div className="text-2xl font-bold text-gray-800">{sortedPlayers[0].name}</div>
-            <div className="text-yellow-600 font-bold text-xl">
+        {/* {sortedPlayers.length > 0 && ( */}
+           {/* <div className="mb-8 text-center p-6 bg-yellow-50/80 backdrop-blur-sm rounded-lg border border-yellow-200"> */}
+            {/* <div className="text-yellow-700 text-lg mb-2">🏆 Người chiến thắng</div> */}
+            {/* <div className="text-2xl font-bold text-gray-800">{sortedPlayers[0].name}</div> */}
+            {/* <div className="text-yellow-600 font-bold text-xl">
               {sortedPlayers[0].score} điểm
-            </div>
-          </div>
-        )}
+            </div> */}
+          {/* </div> */}
+        {/* )} */}
   
         {/* Bảng xếp hạng */}
         <div className="space-y-3">

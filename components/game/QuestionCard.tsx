@@ -7,6 +7,7 @@ interface QuestionProps {
   content: string
   image?: string
   options: string[]
+  answerImage?: string
   timeLeft: number
   onAnswer: (answer: string) => void
   disabled?: boolean
@@ -18,10 +19,11 @@ interface QuestionProps {
   scoreEarned?: number
 }
 
-export function Question({
+export function QuestionCard({
   content,
   image,
   options,
+  answerImage,
   timeLeft,
   onAnswer,
   disabled,
@@ -67,6 +69,16 @@ export function Question({
     })
   }, [selectedAnswer, correctAnswer])
 
+  useEffect(() => {
+    console.log('QuestionCard state:', {
+      selectedAnswer,
+      correctAnswer,
+      isAnswered,
+      scoreEarned,
+      disabled
+    });
+  }, [selectedAnswer, correctAnswer, isAnswered, scoreEarned, disabled]);
+
   return (
     <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 sm:p-6 md:p-8 shadow-lg border border-purple-100">
       {/* Timer và Progress */}
@@ -86,7 +98,7 @@ export function Question({
             className={`h-full rounded-full transition-all duration-1000 ${
               timeLeft <= 5 ? 'bg-red-500' : 'bg-blue-500'
             }`}
-            style={{ width: `${(timeLeft / 30) * 100}%` }}
+            style={{ width: `${(timeLeft / 60) * 100}%` }}
           />
         </div>
       </div>
@@ -96,17 +108,33 @@ export function Question({
         {content}
       </h3>
 
-      {/* Ảnh */}
-      {image && (
-        <div className="mb-6 md:mb-8">
-          <img 
-            src={image}
-            alt="Question illustration"
-            className="w-full h-auto rounded-xl mx-auto shadow-lg object-contain"
-            style={{ maxHeight: '300px' }}
-          />
-        </div>
-      )}
+      {/* Ảnh - Chỉ hiển thị ảnh câu hỏi khi chưa trả lời hoặc ảnh giải thích khi đã trả lời */}
+      <div className="mb-6 md:mb-8">
+        {isAnswered && answerImage ? (
+          <div className="transition-all duration-300 ease-in-out">
+            <Image 
+              src={answerImage}
+              alt="Answer explanation"
+              width={600}
+              height={300}
+              className="w-full h-auto rounded-xl mx-auto shadow-lg object-contain"
+              style={{ maxHeight: '300px' }}
+            />
+            <p className="text-center text-sm text-gray-600 mt-2">Giải thích đáp án</p>
+          </div>
+        ) : image ? (
+          <div className="transition-all duration-300 ease-in-out">
+            <Image 
+              src={image}
+              alt="Question illustration"
+              width={600}
+              height={300}
+              className="w-full h-auto rounded-xl mx-auto shadow-lg object-contain"
+              style={{ maxHeight: '300px' }}
+            />
+          </div>
+        ) : null}
+      </div>
 
       {/* Đáp án */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6">
@@ -142,22 +170,24 @@ export function Question({
       </div>
 
       {/* Kết quả */}
-      {correctAnswer && (
-        <div className={`
-          mt-6 text-center font-bold text-xl md:text-2xl animate-fade-in
-          ${scoreEarned ? 'text-green-600' : 'text-red-600'}
-        `}>
-          {scoreEarned ? (
-            <>
-              <span className="text-2xl md:text-3xl">✓</span> 
-              Chính xác! +{scoreEarned} điểm
-            </>
-          ) : (
-            <>
-              <span className="text-2xl md:text-3xl">✗</span> 
-              Sai rồi!
-            </>
-          )}
+      {isAnswered && (
+        <div className="mt-6">
+          <div className={`
+            text-center font-bold text-xl md:text-2xl animate-fade-in
+            ${scoreEarned ? 'text-green-600' : 'text-red-600'}
+          `}>
+            {scoreEarned ? (
+              <>
+                <span className="text-2xl md:text-3xl">✓</span> 
+                <div>Chính xác! +{scoreEarned} điểm</div>
+              </>
+            ) : (
+              <>
+                <span className="text-2xl md:text-3xl">✗</span> 
+                <div>Sai rồi! Đáp án đúng là: {correctAnswer}</div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

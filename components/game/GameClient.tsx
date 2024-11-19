@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { PlayerList } from '@/components/game/PlayerList'
-import { Question } from './QuestionCard'
+import { QuestionCard } from './QuestionCard'
 import { Button } from '@/components/ui/Button'
 import { GameResult } from './GameResult'
 
@@ -13,7 +13,19 @@ interface GameData {
   status: 'WAITING' | 'PLAYING' | 'FINISHED'
   currentRound: number
   players: any[]
-  questions: any[]
+  playerQuestions: {
+    playerId: string
+    gameId: string
+    questionId: string
+    question: {
+      id: string
+      content: string
+      options: string[]
+      correctAnswer: string
+      image?: string
+      answerImage?: string
+    }
+  }[]
   completedPlayers: string[]
 }
 
@@ -27,7 +39,7 @@ export default function GameClient({ gameCode }: GameClientProps) {
   const [error, setError] = useState('')
   const [isHost, setIsHost] = useState(false)
   const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(30)
+  const [timeLeft, setTimeLeft] = useState(60)
   const [hasAnswered, setHasAnswered] = useState(false)
   const [selectedAnswer, setSelectedAnswer] = useState<string>('')
   const [correctAnswer, setCorrectAnswer] = useState<string>('')
@@ -37,11 +49,30 @@ export default function GameClient({ gameCode }: GameClientProps) {
   const [completedPlayers, setCompletedPlayers] = useState<Set<string>>(new Set())
   const [serverCompletedPlayers, setServerCompletedPlayers] = useState<string[]>([])
   const [showCongrats, setShowCongrats] = useState(false)
+  const [selectedQuestionSet, setSelectedQuestionSet] = useState('A')
+  const [isShowingLastQuestion, setIsShowingLastQuestion] = useState(false)
+  const [canShowCongrats, setCanShowCongrats] = useState(false)
+  const [lastQuestionState, setLastQuestionState] = useState({
+    isLast: false,
+    startTime: 0
+  });
 
   useEffect(() => {
-    const userId = localStorage.getItem('userId')
-    setCurrentUserId(userId)
-  }, [])
+    const userId = localStorage.getItem('userId');
+    console.log('Setting currentUserId:', userId);
+    setCurrentUserId(userId);
+  }, []);
+
+  useEffect(() => {
+    if (game && currentUserId) {
+      console.log('Checking host status:', {
+        gameHostId: game.hostId,
+        currentUserId,
+        isMatching: game.hostId === currentUserId
+      });
+      setIsHost(game.hostId === currentUserId);
+    }
+  }, [game?.hostId, currentUserId]);
 
   const handleNextQuestion = useCallback(() => {
     if (!game || isTransitioning) return;
@@ -51,89 +82,85 @@ export default function GameClient({ gameCode }: GameClientProps) {
     setSelectedAnswer('');
     setCorrectAnswer('');
     setScoreEarned(0);
-    setTimeLeft(30);
+    setTimeLeft(60);
 
-    if (currentQuestion < game.questions.length - 1) {
+    if (currentQuestion < game.playerQuestions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
       setTimeout(() => {
         setIsTransitioning(false);
-      }, 100);
+      }, 500);
     } else {
       setIsTransitioning(false);
     }
   }, [game, currentQuestion, isTransitioning]);
 
-  // Timer cho mỗi câu hỏi
+  // Effect xử lý timer
   useEffect(() => {
-    if (game?.status !== 'PLAYING' || isTransitioning || hasAnswered) return
+    if (game?.status !== 'PLAYING' || hasAnswered) {
+      return;
+    }
 
+    setTimeLeft(60);
     const timer = setInterval(() => {
-      setTimeLeft((prev) => {
+      setTimeLeft(prev => {
         if (prev <= 0) {
-          clearInterval(timer)
-          if (!hasAnswered) {
-            setHasAnswered(true)
-            setScoreEarned(0)
-            
-            const questionData = game.questions[currentQuestion]
-            setCorrectAnswer(questionData.correctAnswer)
-
-            // Đợi 2s để hiển thị đáp án
-            setTimeout(() => {
-              if (currentQuestion === game.questions.length - 1) {
-                if (currentUserId) {
-                  setCompletedPlayers(prev => new Set([...prev, currentUserId]))
-                }
-                handleNextQuestion()
-              } else {
-                handleNextQuestion()
-              }
-            }, 2000)
-          }
-          return 0
+          clearInterval(timer);
+          setHasAnswered(true);
+          setScoreEarned(0);
+          
+          const playerQuestions = getCurrentPlayerQuestions();
+          const currentQuestionData = playerQuestions[currentQuestion].question;
+          setCorrectAnswer(currentQuestionData.correctAnswer);
+          const isLastQuestion = currentQuestion === playerQuestions.length - 1;
+          
+          setTimeout(() => {
+            if (isLastQuestion) {
+              setShowCongrats(true);
+            } else {
+              setCurrentQuestion(prev => prev + 1);
+              setHasAnswered(false);
+              setSelectedAnswer('');
+              setCorrectAnswer('');
+              setScoreEarned(0);
+              setTimeLeft(60);
+            }
+          }, 10000);
+          
+          return 0;
         }
-        return prev - 1
-      })
-    }, 1000)
+        return prev - 1;
+      });
+    }, 1000);
 
-    return () => clearInterval(timer)
-  }, [game?.status, isTransitioning, hasAnswered, currentQuestion, handleNextQuestion])
+    return () => clearInterval(timer);
+  }, [game?.status, hasAnswered, currentQuestion]);
 
   // Fetch game data
-  const fetchGame = async () => {
+  const fetchGame = useCallback(async () => {
     try {
-      const res = await fetch(`/api/game/${gameCode}`)
-      const data = await res.json()
+      const res = await fetch(`/api/game/${gameCode}`, {
+        cache: 'no-store'
+      });
+      const data = await res.json();
       
-      console.log('Fetched game data:', data)
-
+      console.log('Fetched game data:', {
+        gameHostId: data.data.game?.hostId,
+        currentUserId,
+        status: data.data.game?.status
+      });
+      
       if (data.success) {
-        // Nếu game đang ở trạng thái PLAYING và không có câu hỏi, fetch câu hỏi mới
-        if (data.data.game.status === 'PLAYING' && (!data.data.game.questions || data.data.game.questions.length === 0)) {
-          const questionsRes = await fetch('/api/question')
-          const questionsData = await questionsRes.json()
-          
-          if (questionsData.success) {
-            data.data.game.questions = questionsData.data.questions
-          }
-        }
-
-        setGame(data.data.game)
-        console.log('Questions:', data.data.game.questions)
-        
-        if (data.data.game.hostId === localStorage.getItem('userId')) {
-          setIsHost(true)
-        }
+        setGame(data.data.game);
       } else {
-        setError(data.error)
+        setError(data.error);
       }
     } catch (error) {
-      setError('Không thể tải thông tin game')
-      console.error('Fetch game error:', error)
+      setError('Không thể tải thông tin game');
+      console.error('Fetch game error:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  }, [gameCode, currentUserId]);
 
   // Initial fetch
   useEffect(() => {
@@ -161,42 +188,38 @@ export default function GameClient({ gameCode }: GameClientProps) {
   const handleStartGame = async () => {
     if (!isHost || !game) return;
     
+    console.log('Starting game...', {
+      isHost,
+      currentUserId,
+      gameCode: game.gameCode,
+      questionSet: selectedQuestionSet
+    });
+    
     try {
-      // 1. Fetch câu hỏi ngẫu nhiên
-      const questionsRes = await fetch('/api/question');
-      const questionsData = await questionsRes.json();
-      
-      console.log('Questions data from API:', questionsData);
-      
-      if (!questionsData?.success) {
-        throw new Error('Không thể tải câu hỏi');
-      }
-
-      const questions = questionsData.data.questions;
-      
-      // 2. Cập nhật trạng thái game với ID của các câu hỏi
-      const res = await fetch('/api/game/status', {
+      const response = await fetch(`/api/game/status`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           gameCode: game.gameCode,
           status: 'PLAYING',
-          questions: questions // Gửi toàn bộ câu hỏi để có ID
+          questionSet: selectedQuestionSet,
+          hostId: currentUserId,
+          gameId: game.id
         })
       });
 
-      const data = await res.json();
-      console.log('Game status update response:', data);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
       
       if (data.success && data.data?.game) {
-        setGame({
-          ...data.data.game,
-          questions: questions // Sử dụng câu hỏi từ API question
-        });
+        setGame(data.data.game);
         setCurrentQuestion(0);
-        setTimeLeft(30);
+        setTimeLeft(60);
         setHasAnswered(false);
         setSelectedAnswer('');
         setCorrectAnswer('');
@@ -209,54 +232,64 @@ export default function GameClient({ gameCode }: GameClientProps) {
   };
 
   const handleAnswer = async (answer: string) => {
-    if (hasAnswered || !game || isHost || isTransitioning) return;
+    if (hasAnswered || !game) return;
     
     setHasAnswered(true);
     setSelectedAnswer(answer);
 
     try {
-      const isLastQuestion = currentQuestion === game.questions.length - 1;
+      const playerQuestions = getCurrentPlayerQuestions();
+      const currentQuestionData = playerQuestions[currentQuestion].question;
+      const isCorrect = answer === currentQuestionData.correctAnswer;
+      const isLastQuestion = currentQuestion === playerQuestions.length - 1;
+      
+      setCorrectAnswer(currentQuestionData.correctAnswer);
+      const earnedScore = isCorrect ? Math.max(10, Math.floor((timeLeft / 60) * 100)) : 0;
+      setScoreEarned(earnedScore);
+
       const response = await fetch('/api/game/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           gameId: game.id,
           playerId: currentUserId,
+          questionId: currentQuestionData.id,
           answer,
-          timeSpent: 30 - timeLeft,
-          isLastQuestion,
-          currentQuestion
+          score: earnedScore,
+          timeSpent: 60 - timeLeft,
+          isCorrect,
+          currentQuestion,
+          isLastQuestion
         })
       });
 
       const data = await response.json();
       
       if (data.success) {
-        const { correctAnswer, isCorrect } = data.data.answer;
-        setCorrectAnswer(correctAnswer);
-        setScoreEarned(data.data.scoreEarned);
-
-        if (isLastQuestion) {
-          setTimeout(() => {
+        setGame(data.data.game);
+        
+        setTimeout(() => {
+          if (isLastQuestion) {
             setShowCongrats(true);
-            if (currentUserId) {
-              setCompletedPlayers(prev => new Set([...prev, currentUserId]));
-            }
-          }, 2000);
-        } else {
-          setTimeout(() => {
+          } else {
+            setCurrentQuestion(prev => prev + 1);
+            setHasAnswered(false);
             setSelectedAnswer('');
             setCorrectAnswer('');
             setScoreEarned(0);
-            setHasAnswered(false);
-            handleNextQuestion();
-          }, 2000);
-        }
+            setTimeLeft(60);
+          }
+        }, 10000);
       }
     } catch (error) {
-      console.error('Error submitting answer:', error);
+      console.error('Error submitting answer');
     }
   };
+
+  // Reset state khi game thay đổi
+  useEffect(() => {
+    setIsShowingLastQuestion(false);
+  }, [game?.id]);
 
   // Component hiển thị điểm ca người chơi hiện tại
   const CurrentPlayerScore = () => {
@@ -303,7 +336,7 @@ export default function GameClient({ gameCode }: GameClientProps) {
         // Reset tất cả state về giá trị ban đầu
         setGame(resetData.data.game);
         setCurrentQuestion(0);
-        setTimeLeft(30);
+        setTimeLeft(60);
         setHasAnswered(false);
         setSelectedAnswer('');
         setCorrectAnswer('');
@@ -318,7 +351,7 @@ export default function GameClient({ gameCode }: GameClientProps) {
   };
 
   // Kiểm tra xem có câu hỏi hiện tại không
-  const currentQuestionData = game?.questions?.[currentQuestion]
+  const currentQuestionData = game?.playerQuestions?.[currentQuestion]
 
   // Thêm effect để kiểm tra khi nào tất cả người chơi hoàn thành
   useEffect(() => {
@@ -371,7 +404,7 @@ export default function GameClient({ gameCode }: GameClientProps) {
     return () => clearInterval(interval)
   }, [gameCode, game?.status])
 
-  // Thêm polling để kiểm tra trạng thái game thường xuyên
+  // Thêm polling để kiểm tra trạng thái game thờng xuyên
   useEffect(() => {
     if (!gameCode || !game) return;
 
@@ -414,7 +447,7 @@ export default function GameClient({ gameCode }: GameClientProps) {
     if (game?.status === 'WAITING') {
       // Reset tất cả state khi game chuyển sang WAITING
       setCurrentQuestion(0);
-      setTimeLeft(30);
+      setTimeLeft(60);
       setHasAnswered(false);
       setSelectedAnswer('');
       setCorrectAnswer('');
@@ -426,54 +459,69 @@ export default function GameClient({ gameCode }: GameClientProps) {
     }
   }, [game?.status]);
 
+  const getCurrentPlayerQuestions = useCallback(() => {
+    if (!game?.playerQuestions || !currentUserId) return [];
+    
+    // Lọc câu hỏi cho player hiện tại
+    return game.playerQuestions.filter(pq => pq.playerId === currentUserId);
+  }, [game?.playerQuestions, currentUserId]);
+
   const renderMainContent = () => {
-    console.log('Debug render:', {
-      gameStatus: game?.status,
-      currentQuestionData,
-      isHost,
-      questions: game?.questions,
-      currentQuestion,
-      showCongrats,
-      completedPlayers
-    });
-
-    if (!game) return null;
-
-    // Nếu đang chờ
     if (game.status === 'WAITING') {
       return (
-        <div className="bg-white/80 backdrop-blur-sm rounded-lg p-8 text-center shadow-lg border border-purple-100">
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-800">Đang chờ người chơi...</h2>
-            <div className="flex flex-col items-center gap-2">
-              <p className="text-gray-600">
-                Chia sẻ mã game cho bạn bè:
-              </p>
-              <div className="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-lg">
-                <span className="text-2xl font-mono font-semibold text-indigo-600">
-                  {game.gameCode}
-                </span>
+        <div className="flex flex-col items-center justify-center space-y-8">
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-8 text-center shadow-lg border border-purple-100">
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold text-gray-800">
+                {isHost ? 'Đang chờ người chơi...' : 'Đang chờ host bắt đầu...'}
+              </h2>
+              
+              {isHost && (
+                <div className="mb-4">
+                  <label className="block text-gray-600 text-sm font-medium mb-2">
+                    Chọn bộ câu hỏi cho trò chơi
+                  </label>
+                  <select 
+                    value={selectedQuestionSet}
+                    onChange={(e) => setSelectedQuestionSet(e.target.value)}
+                    className="w-full max-w-xs p-2 border rounded-lg bg-white/80 text-gray-700 border-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-300"
+                  >
+                    <option value="A">Set A</option>
+                    <option value="B">Set B</option>
+                    <option value="C">Set C</option>
+                    <option value="D">Set D</option>
+                  </select>
+                  <p className="mt-1 text-sm text-gray-500 italic">
+                    Mỗi b câu hỏi sẽ có chủ đề và độ khó khác nhau
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-gray-600">
+                  {isHost ? 'Chia sẻ mã game cho bạn bè:' : 'Mã game của bạn:'}
+                </p>
+                <div className="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-lg">
+                  <span className="text-2xl font-mono font-semibold text-indigo-600">
+                    {game.gameCode}
+                  </span>
+                </div>
               </div>
+              
+              {isHost && (
+                <Button
+                  onClick={handleStartGame}
+                  className="mt-4 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all"
+                >
+                  Bắt đầu game
+                </Button>
+              )}
             </div>
-            
-            {isHost ? (
-              <Button
-                onClick={handleStartGame}
-                className="mt-4 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all"
-              >
-                Bắt đầu game
-              </Button>
-            ) : (
-              <p className="mt-4 text-gray-600 italic">
-                Đang chờ host bắt đầu game...
-              </p>
-            )}
           </div>
         </div>
       );
     }
 
-    // Nếu game đã kết thúc hoặc player đã hoàn thành
     if (game.status === 'FINISHED' || (currentUserId && game.completedPlayers.includes(currentUserId))) {
       return (
         <GameResult 
@@ -486,9 +534,7 @@ export default function GameClient({ gameCode }: GameClientProps) {
       );
     }
 
-    // Nếu đang chơi (PLAYING)
     if (game.status === 'PLAYING') {
-      // Nếu là host
       if (isHost) {
         return (
           <GameResult 
@@ -501,31 +547,21 @@ export default function GameClient({ gameCode }: GameClientProps) {
         );
       }
 
-      // Nếu player đã hoàn thành tất cả câu hỏi
-      if (showCongrats || (currentUserId && game.completedPlayers.includes(currentUserId))) {
+      const playerQuestions = getCurrentPlayerQuestions();
+      if (playerQuestions && playerQuestions.length > 0) {
+        const currentQuestionData = playerQuestions[currentQuestion].question;
+        
         return (
-          <GameResult 
-            players={game.players}
-            isHost={false}
-            currentUserId={currentUserId}
-            onRestart={handleRestart}
-            completedPlayers={game.completedPlayers}
-          />
-        );
-      }
-
-      // Kiểm tra và hiển thị câu hỏi cho player
-      if (game.questions && game.questions.length > 0) {
-        return (
-          <Question
-            content={game.questions[currentQuestion].content}
-            options={game.questions[currentQuestion].options}
-            image={game.questions[currentQuestion].image}
+          <QuestionCard
+            content={currentQuestionData.content}
+            options={currentQuestionData.options}
+            image={currentQuestionData.image}
+            answerImage={currentQuestionData.answerImage}
             timeLeft={timeLeft}
             onAnswer={handleAnswer}
             disabled={hasAnswered}
             currentQuestion={currentQuestion}
-            totalQuestions={game.questions.length}
+            totalQuestions={playerQuestions.length}
             selectedAnswer={selectedAnswer}
             correctAnswer={correctAnswer}
             isAnswered={hasAnswered}
@@ -540,7 +576,47 @@ export default function GameClient({ gameCode }: GameClientProps) {
         Đang tải câu hỏi...
       </div>
     );
-  }
+  };
+
+  // Effect mới để kiểm tra thời gian
+  useEffect(() => {
+    const checkLastQuestionTime = () => {
+      const lastQuestionTime = localStorage.getItem('lastQuestionAnsweredTime');
+      const isLastQuestion = localStorage.getItem('isLastQuestion');
+
+      if (lastQuestionTime && isLastQuestion === 'true') {
+        const timeElapsed = Date.now() - parseInt(lastQuestionTime);
+        
+        // Nếu đã trôi qua 60 giây
+        if (timeElapsed >= 60000 && !canShowCongrats) {
+          setCanShowCongrats(true);
+          if (currentUserId) {
+            setCompletedPlayers(prev => new Set([...prev, currentUserId]));
+          }
+        }
+        
+        // Nếu đã trôi qua 80 giây
+        if (timeElapsed >= 80000) {
+          setShowCongrats(true);
+          // Xóa dữ liệu localStorage
+          localStorage.removeItem('lastQuestionAnsweredTime');
+          localStorage.removeItem('isLastQuestion');
+        }
+      }
+    };
+
+    // Kiểm tra mỗi giây
+    const interval = setInterval(checkLastQuestionTime, 1000);
+    return () => clearInterval(interval);
+  }, [canShowCongrats, currentUserId]);
+
+  // Reset state khi component unmount
+  useEffect(() => {
+    return () => {
+      localStorage.removeItem('lastQuestionAnsweredTime');
+      localStorage.removeItem('isLastQuestion');
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -568,7 +644,8 @@ export default function GameClient({ gameCode }: GameClientProps) {
     )
   }
 
-  console.log('Game object:', game);
+  console.log('All player questions:', game?.playerQuestions);
+  console.log('Current userId:', currentUserId);
 
   return (
     <div className="p-4 max-w-7xl mx-auto">

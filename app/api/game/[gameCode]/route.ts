@@ -25,7 +25,11 @@ export async function GET(request: NextRequest) {
       where: { gameCode },
       include: {
         players: true,
-        questions: true
+        playerQuestions: {
+          include: {
+            question: true
+          }
+        }
       }
     })
 

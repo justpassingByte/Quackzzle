@@ -4,57 +4,52 @@ import { prisma } from '@/prisma/prisma'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { gameId, playerId, answer, timeSpent, currentQuestion } = body
+    const { gameId, playerId, answer, score, timeSpent, currentQuestion, isLastQuestion } = body
 
-    console.log('Received answer:', {
-      answer,
-      timeSpent,
-      gameId,
-      playerId,
-      currentQuestion
-    })
-
-    const game = await prisma.game.findUnique({
-      where: { id: gameId },
-      include: {
-        questions: true,
-        players: true
-      }
-    })
-
-    if (!game) {
-      return NextResponse.json({ success: false, error: 'Game not found' })
-    }
-
-    const questionData = game.questions[currentQuestion]
-    
-    console.log('Question check:', {
-      questionContent: questionData.content,
-      playerAnswer: answer,
-      correctAnswer: questionData.correctAnswer,
-      questionIndex: currentQuestion
-    })
-
-    const isCorrect = answer.trim() === questionData.correctAnswer.trim()
-    
-    const scoreEarned = isCorrect ? Math.max(10, Math.floor((30 - timeSpent) * 0.5)) : 0
-
+    // Cập nhật điểm số cho player
     await prisma.player.update({
       where: { id: playerId },
       data: {
-        score: { increment: scoreEarned }
+        score: {
+          increment: score
+        }
       }
     })
+
+    // Lấy game data mới nhất sau khi cập nhật điểm
+    const updatedGame = await prisma.game.findUnique({
+      where: { id: gameId },
+      include: {
+        players: {
+          orderBy: {
+            score: 'desc'
+          }
+        },
+        playerQuestions: {
+          include: {
+            question: true
+          }
+        }
+      }
+    })
+
+    // Nếu là câu hỏi cuối, thêm player vào danh sách đã hoàn thành
+    if (isLastQuestion) {
+      await prisma.game.update({
+        where: { id: gameId },
+        data: {
+          completedPlayers: {
+            push: playerId
+          }
+        }
+      })
+    }
 
     return NextResponse.json({
       success: true,
       data: {
-        answer: {
-          correctAnswer: questionData.correctAnswer,
-          isCorrect,
-          playerAnswer: answer
-        },
-        scoreEarned
+        game: updatedGame,
+        scoreEarned: score
       }
     })
 
