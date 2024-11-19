@@ -467,6 +467,11 @@ export default function GameClient({ gameCode }: GameClientProps) {
   }, [game?.playerQuestions, currentUserId]);
 
   const renderMainContent = () => {
+    // Kiểm tra null trước
+    if (!game) {
+      return null;
+    }
+
     if (game.status === 'WAITING') {
       return (
         <div className="flex flex-col items-center justify-center space-y-8">
