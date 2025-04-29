@@ -1,3 +1,10 @@
+/**
+ * API helper functions for Quackzzle
+ */
+
+/**
+ * Xử lý lỗi API và trả về response chuẩn
+ */
 export function handleApiError(error: unknown) {
   if (error instanceof Error) {
     console.error('API Error:', error.message);
@@ -13,11 +20,30 @@ export function handleApiError(error: unknown) {
     error: 'An unknown error occurred'
   };
 }
+
+/**
+ * Kiểm tra mã phòng game hợp lệ
+ */
 export function validateGameCode(gameCode: string) {
-  // return typeof gameCode === 'string' && gameCode.length === 6;
+  console.log('Validating game code:', gameCode);
+  if (typeof gameCode !== 'string') {
+    console.log('Game code is not a string');
+    return false;
+  }
+  
+  // Code ít nhất phải có 1 ký tự và không vượt quá 20 ký tự
+  if (gameCode.length < 1 || gameCode.length > 20) {
+    console.log('Game code length is invalid:', gameCode.length);
+    return false;
+  }
+  
+  console.log('Game code is valid');
   return true;
 }
 
+/**
+ * Kiểm tra tên người chơi hợp lệ
+ */
 export function validatePlayerName(name: string) {
   return typeof name === 'string' && name.length >= 2 && name.length <= 20;
 }

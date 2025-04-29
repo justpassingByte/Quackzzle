@@ -1,4 +1,7 @@
+'use client'
+
 import React from "react"
+import { LiberationBadge } from "../ui/LiberationBadge"
 
 interface PlayerListProps {
   players: Array<{
@@ -8,14 +11,24 @@ interface PlayerListProps {
     isHost?: boolean
   }>
   currentUserId: string | null
+  hostId?: string
 }
 
-export function PlayerList({ players, currentUserId }: PlayerListProps) {
+export function PlayerList({ players, currentUserId, hostId }: PlayerListProps) {
   const [prevScores, setPrevScores] = React.useState<{[key: string]: number}>({});
   const [animations, setAnimations] = React.useState<{[key: string]: boolean}>({});
   const [scoreChanges, setScoreChanges] = React.useState<{[key: string]: number}>({});
   
-  const sortedPlayers = [...players].sort((a, b) => (b.score || 0) - (a.score || 0));
+  // Debug logs
+  console.log('PlayerList - players before filtering:', players);
+  
+  // Lọc danh sách người chơi để không hiển thị host theo tên
+  const filteredPlayers = players.filter(player => player.name !== 'Host');
+  
+  console.log('PlayerList - players after filtering:', filteredPlayers);
+  
+  // Sắp xếp người chơi theo điểm số
+  const sortedPlayers = [...filteredPlayers].sort((a, b) => (b.score || 0) - (a.score || 0));
 
   React.useEffect(() => {
     players.forEach(player => {
@@ -60,51 +73,69 @@ export function PlayerList({ players, currentUserId }: PlayerListProps) {
         [player.id]: player.score
       }), {})
     );
-  }, [players]);
+  }, [players, prevScores]);
+
+  if (sortedPlayers.length === 0) {
+    return (
+      <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border-2 border-red-500/70 relative overflow-hidden">
+        <div className="absolute inset-0 liberation-gradient opacity-5"></div>
+        <div className="relative z-10">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <LiberationBadge label="Người chơi" />
+          </div>
+          <p className="text-gray-500 text-center py-4">Chưa có người chơi nào tham gia</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-purple-100">
-      <h3 className="text-xl font-bold mb-6 text-gray-800">Người chơi</h3>
-      <div className="space-y-3">
-        {sortedPlayers.map((player, index) => (
-          <div
-            key={player.id}
-            className={`
-              flex justify-between items-center p-4 rounded-lg transition-all duration-200
-              ${player.id === currentUserId 
-                ? 'bg-indigo-50/80 border border-indigo-200' 
-                : 'bg-white/60 border border-purple-100'
-              }
-              hover:shadow-sm hover:bg-white/90
-            `}
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-gray-500 font-medium">#{index + 1}</span>
-              <span className="text-gray-800">
-                {player.name} 
-                {player.isHost && <span className="ml-2 text-yellow-500">👑</span>}
-                {player.id === currentUserId && 
-                  <span className="ml-2 text-sm text-blue-600">(Bạn)</span>
+    <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border-2 border-red-500/70 relative overflow-hidden">
+      <div className="absolute inset-0 liberation-gradient opacity-5"></div>
+      <div className="relative z-10">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <LiberationBadge label="Người chơi" />
+        </div>
+        <div className="space-y-3">
+          {sortedPlayers.map((player, index) => (
+            <div
+              key={player.id}
+              className={`
+                flex justify-between items-center p-4 rounded-lg transition-all duration-200
+                ${player.id === currentUserId 
+                  ? 'bg-red-50/80 border border-red-200' 
+                  : 'bg-white/60 border border-gray-200'
                 }
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span 
-                className={`
-                  font-bold text-xl transition-all duration-300
-                  ${animations[player.id] ? 'text-green-600 animate-bounce' : 'text-blue-600'}
-                `}
-              >
-                {player.score || 0}
-              </span>
-              {animations[player.id] && (
-                <span className="text-green-500 text-sm animate-fade-in">
-                  +{scoreChanges[player.id] || 0}
+                hover:shadow-sm hover:bg-white/90
+              `}
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-gray-500 font-medium">#{index + 1}</span>
+                <span className="text-gray-800">
+                  {player.name} 
+                  {player.id === currentUserId && 
+                    <span className="ml-2 text-sm text-red-600">(Bạn)</span>
+                  }
                 </span>
-              )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span 
+                  className={`
+                    font-bold text-xl transition-all duration-300
+                    ${animations[player.id] ? 'text-green-600 animate-bounce' : 'text-red-600'}
+                  `}
+                >
+                  {player.score || 0}
+                </span>
+                {animations[player.id] && (
+                  <span className="text-green-500 text-sm animate-fade-in">
+                    +{scoreChanges[player.id] || 0}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );

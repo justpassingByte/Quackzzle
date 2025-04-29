@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Quackzzle - Ứng dụng Trò chơi Câu đố Việt Nam
 
-## Getting Started
+Quackzzle là một ứng dụng trò chơi câu đố trực tuyến đa người chơi, tập trung vào các chủ đề về Việt Nam. Người dùng có thể tạo phòng, mời bạn bè tham gia và cùng nhau trả lời các câu hỏi trong nhiều lĩnh vực khác nhau.
 
-First, run the development server:
+## Tính năng chính
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- 🎮 Tạo phòng chơi và chia sẻ mã phòng với bạn bè
+- 🧠 Nhiều bộ câu hỏi đa dạng:
+  - Lịch sử Việt Nam (1945 - nay)
+  - Địa lý
+  - Văn hóa
+  - Khoa học và Công nghệ
+  - Nghệ thuật và Giải trí
+  - Thể thao
+  - Đời sống và Sức khỏe
+  - Câu hỏi có video
+- ⏱️ Tính điểm dựa trên thời gian trả lời
+- 📊 Bảng xếp hạng thời gian thực
+- 🏆 Hiển thị kết quả cuối cùng và người chiến thắng
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Công nghệ sử dụng
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Frontend**: Next.js, React, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes
+- **Database**: MongoDB với Prisma ORM
+- **Deployment**: Vercel
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Cài đặt và chạy
 
-## Learn More
+### Yêu cầu
 
-To learn more about Next.js, take a look at the following resources:
+- Node.js 16.x trở lên
+- MongoDB (local hoặc Atlas)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Cài đặt
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Clone repository:
+   ```bash
+   git clone https://github.com/your-username/quackzzle.git
+   cd quackzzle
+   ```
 
-## Deploy on Vercel
+2. Cài đặt dependencies:
+   ```bash
+   npm install
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+3. Tạo file `.env` với nội dung:
+   ```
+   DATABASE_URL="mongodb+srv://username:password@cluster.mongodb.net/quackzzle?retryWrites=true&w=majority"
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+4. Khởi tạo database và sinh dữ liệu:
+   ```bash
+   npx prisma db push
+   npx prisma db seed
+   ```
+
+### Chạy dự án
+
+1. Chạy trong môi trường development:
+   ```bash
+   npm run dev
+   ```
+
+2. Build và chạy production:
+   ```bash
+   npm run build
+   npm start
+   ```
+
+## Cách chơi
+
+1. Người chơi đầu tiên (host) tạo phòng và nhận mã phòng
+2. Host chia sẻ mã phòng cho những người chơi khác
+3. Người chơi nhập mã phòng để tham gia
+4. Khi tất cả người chơi đã tham gia, host bắt đầu trò chơi
+5. Mỗi người chơi trả lời các câu hỏi dựa trên thời gian - càng nhanh càng được nhiều điểm
+6. Kết quả được hiển thị sau khi tất cả người chơi hoàn thành
+
+## Đóng góp
+
+Chúng tôi rất hoan nghênh mọi đóng góp! Nếu bạn muốn đóng góp vào dự án:
+
+1. Fork repository
+2. Tạo branch mới (`git checkout -b feature/amazing-feature`)
+3. Commit thay đổi (`git commit -m 'Add some amazing feature'`)
+4. Push lên branch (`git push origin feature/amazing-feature`)
+5. Mở Pull Request
+
+## Giấy phép
+
+Dự án này được phân phối dưới Giấy phép MIT. Xem thêm tại `LICENSE`.

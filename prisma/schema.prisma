@@ -11,6 +11,7 @@ model Question {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   content       String
   image         String?
+  videoUrl      String?
   options       String[]
   correctAnswer String
   category      String
@@ -20,6 +21,7 @@ model Question {
   game          Game?    @relation(fields: [gameId], references: [id])
   gameId        String?  @db.ObjectId
   answerImage   String?
+  answerExplanation String?
   playerQuestions PlayerQuestion[]
 }
 model PlayerQuestion {

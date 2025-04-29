@@ -5,6 +5,8 @@ import { PlayerList } from '@/components/game/PlayerList'
 import { QuestionCard } from './QuestionCard'
 import { Button } from '@/components/ui/Button'
 import { GameResult } from './GameResult'
+import { LiberationBanner } from '@/components/ui/LiberationBanner'
+import { LiberationBadge } from '@/components/ui/LiberationBadge'
 
 interface GameData {
   id: string
@@ -24,6 +26,8 @@ interface GameData {
       correctAnswer: string
       image?: string
       answerImage?: string
+      videoUrl?: string
+      answerExplanation?: string
     }
   }[]
   completedPlayers: string[]
@@ -37,7 +41,6 @@ export default function GameClient({ gameCode }: GameClientProps) {
   const [game, setGame] = useState<GameData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [isHost, setIsHost] = useState(false)
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [timeLeft, setTimeLeft] = useState(60)
   const [hasAnswered, setHasAnswered] = useState(false)
@@ -45,17 +48,8 @@ export default function GameClient({ gameCode }: GameClientProps) {
   const [correctAnswer, setCorrectAnswer] = useState<string>('')
   const [scoreEarned, setScoreEarned] = useState<number>(0)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [isTransitioning, setIsTransitioning] = useState(false)
-  const [completedPlayers, setCompletedPlayers] = useState<Set<string>>(new Set())
-  const [serverCompletedPlayers, setServerCompletedPlayers] = useState<string[]>([])
-  const [showCongrats, setShowCongrats] = useState(false)
   const [selectedQuestionSet, setSelectedQuestionSet] = useState('A')
-  const [isShowingLastQuestion, setIsShowingLastQuestion] = useState(false)
-  const [canShowCongrats, setCanShowCongrats] = useState(false)
-  const [lastQuestionState, setLastQuestionState] = useState({
-    isLast: false,
-    startTime: 0
-  });
+  const [completedPlayers, setCompletedPlayers] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const userId = localStorage.getItem('userId');
@@ -70,29 +64,24 @@ export default function GameClient({ gameCode }: GameClientProps) {
         currentUserId,
         isMatching: game.hostId === currentUserId
       });
-      setIsHost(game.hostId === currentUserId);
     }
-  }, [game?.hostId, currentUserId]);
+  }, [game, currentUserId]);
+
+  const getCurrentPlayerQuestions = useCallback(() => {
+    if (!game?.playerQuestions || !currentUserId) return [];
+    
+    // Lọc câu hỏi cho player hiện tại
+    return game.playerQuestions.filter(pq => pq.playerId === currentUserId);
+  }, [game?.playerQuestions, currentUserId]);
 
   const handleNextQuestion = useCallback(() => {
-    if (!game || isTransitioning) return;
-
-    setIsTransitioning(true);
     setHasAnswered(false);
     setSelectedAnswer('');
     setCorrectAnswer('');
     setScoreEarned(0);
     setTimeLeft(60);
-
-    if (currentQuestion < game.playerQuestions.length - 1) {
-      setCurrentQuestion(prev => prev + 1);
-      setTimeout(() => {
-        setIsTransitioning(false);
-      }, 500);
-    } else {
-      setIsTransitioning(false);
-    }
-  }, [game, currentQuestion, isTransitioning]);
+    setCurrentQuestion(prev => prev + 1);
+  }, []);
 
   // Effect xử lý timer
   useEffect(() => {
@@ -115,8 +104,6 @@ export default function GameClient({ gameCode }: GameClientProps) {
           
           setTimeout(() => {
             if (isLastQuestion) {
-              setShowCongrats(true);
-            } else {
               setCurrentQuestion(prev => prev + 1);
               setHasAnswered(false);
               setSelectedAnswer('');
@@ -133,20 +120,34 @@ export default function GameClient({ gameCode }: GameClientProps) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [game?.status, hasAnswered, currentQuestion]);
+  }, [game?.status, hasAnswered, currentQuestion, getCurrentPlayerQuestions]);
 
   // Fetch game data
   const fetchGame = useCallback(async () => {
     try {
+      console.log('Fetching game data for code:', gameCode);
+      
       const res = await fetch(`/api/game/${gameCode}`, {
         cache: 'no-store'
       });
+      
+      console.log('API response status:', res.status);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Error response text:', errorText);
+      }
+      
       const data = await res.json();
       
       console.log('Fetched game data:', {
-        gameHostId: data.data.game?.hostId,
+        success: data.success,
+        error: data.error,
+        gameData: data.data?.game,
+        gameCode: gameCode,
+        gameHostId: data.data?.game?.hostId,
         currentUserId,
-        status: data.data.game?.status
+        status: data.data?.game?.status
       });
       
       if (data.success) {
@@ -155,41 +156,38 @@ export default function GameClient({ gameCode }: GameClientProps) {
         setError(data.error);
       }
     } catch (error) {
+      console.error('Fetch game error details:', error);
       setError('Không thể tải thông tin game');
-      console.error('Fetch game error:', error);
     } finally {
       setLoading(false);
     }
   }, [gameCode, currentUserId]);
 
-  // Initial fetch
+  // Initial fetch và debug
   useEffect(() => {
     if (gameCode) {
       fetchGame()
     }
-  }, [gameCode])
+    
+    // Debug hiển thị userId từ localStorage
+    console.log('Current userId from localStorage:', localStorage.getItem('userId'));
+  }, [gameCode, fetchGame])
 
-  // Polling để cp nhật danh sách người chơi
+  // Một interval duy nhất để cập nhật game state
   useEffect(() => {
-    if (!gameCode || game?.status !== 'WAITING') return
+    if (!gameCode) return;
 
     const interval = setInterval(() => {
-      fetchGame()
-    }, 3000)
+      fetchGame();
+    }, 2000);
 
-    return () => clearInterval(interval)
-  }, [gameCode, game?.status])
-
-  // Debug isHost changes
-  useEffect(() => {
-    console.log('Is Host:', isHost)
-  }, [isHost])
+    return () => clearInterval(interval);
+  }, [gameCode, fetchGame]);
 
   const handleStartGame = async () => {
-    if (!isHost || !game) return;
+    if (!game || !currentUserId) return;
     
     console.log('Starting game...', {
-      isHost,
       currentUserId,
       gameCode: game.gameCode,
       questionSet: selectedQuestionSet
@@ -223,7 +221,6 @@ export default function GameClient({ gameCode }: GameClientProps) {
         setHasAnswered(false);
         setSelectedAnswer('');
         setCorrectAnswer('');
-        setShowCongrats(false);
       }
     } catch (error) {
       console.error('Start game error:', error);
@@ -269,17 +266,10 @@ export default function GameClient({ gameCode }: GameClientProps) {
         setGame(data.data.game);
         
         setTimeout(() => {
-          if (isLastQuestion) {
-            setShowCongrats(true);
-          } else {
-            setCurrentQuestion(prev => prev + 1);
-            setHasAnswered(false);
-            setSelectedAnswer('');
-            setCorrectAnswer('');
-            setScoreEarned(0);
-            setTimeLeft(60);
+          if (!isLastQuestion) {
+            handleNextQuestion();
           }
-        }, 10000);
+        }, 3000);
       }
     } catch (error) {
       console.error('Error submitting answer');
@@ -288,7 +278,7 @@ export default function GameClient({ gameCode }: GameClientProps) {
 
   // Reset state khi game thay đổi
   useEffect(() => {
-    setIsShowingLastQuestion(false);
+    setHasAnswered(false);
   }, [game?.id]);
 
   // Component hiển thị điểm ca người chơi hiện tại
@@ -314,7 +304,7 @@ export default function GameClient({ gameCode }: GameClientProps) {
   }
 
   const handleRestart = async () => {
-    if (!isHost || !game) return;
+    if (!game || !currentUserId) return;
     
     try {
       // Reset game về trạng thái WAITING
@@ -341,9 +331,6 @@ export default function GameClient({ gameCode }: GameClientProps) {
         setSelectedAnswer('');
         setCorrectAnswer('');
         setScoreEarned(0);
-        setShowCongrats(false); // Reset showCongrats
-        setCompletedPlayers(new Set()); // Reset completedPlayers
-        setServerCompletedPlayers([]); // Reset serverCompletedPlayers nếu cần
       }
     } catch (error) {
       console.error('Failed to restart game:', error);
@@ -361,7 +348,7 @@ export default function GameClient({ gameCode }: GameClientProps) {
     if (game.status !== 'PLAYING') return;
 
     // Lấy danh sách người chơi (không bao gồm host)
-    const activePlayers = game.players.filter(player => player.id !== game.hostId);
+    const activePlayers = game.players.filter(player => player.name !== 'Host');
     
     // Kiểm tra số người đã hoàn thành từ server
     const allPlayersCompleted = game.completedPlayers.length === activePlayers.length;
@@ -381,68 +368,7 @@ export default function GameClient({ gameCode }: GameClientProps) {
     }
   }, [game, currentUserId]);
 
-  // Cập nhật effect để kiểm tra trng thái game
-  useEffect(() => {
-    if (!gameCode || game?.status !== 'PLAYING') return;
-
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/game/${gameCode}`)
-        const data = await res.json()
-        
-        if (data.success) {
-          // Chỉ cập nhật game state khi chuyển sang FINISHED
-          if (data.data.game.status === 'FINISHED') {
-            setGame(data.data.game)
-          }
-        }
-      } catch (error) {
-        console.error('Check game status error:', error)
-      }
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [gameCode, game?.status])
-
-  // Thêm polling để kiểm tra trạng thái game thờng xuyên
-  useEffect(() => {
-    if (!gameCode || !game) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/game/${gameCode}`);
-        const data = await res.json();
-        
-        if (data.success) {
-          setGame(data.data.game);
-        }
-      } catch (error) {
-        console.error('Poll game status error:', error);
-      }
-    }, 1000); // Poll mỗi giây
-
-    return () => clearInterval(interval);
-  }, [gameCode, game?.status]);
-
-  useEffect(() => {
-    if (!game || !currentUserId) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/game/${game.gameCode}`);
-        const data = await res.json();
-        if (data.success) {
-          setGame(data.data.game);
-        }
-      } catch (error) {
-        console.error('Error polling game status:', error);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [game?.gameCode, currentUserId]);
-
-  // Thêm effect mới để theo dõi trạng thái game
+  // Thêm effect để reset state khi game chuyển trạng thái sang WAITING
   useEffect(() => {
     if (game?.status === 'WAITING') {
       // Reset tất cả state khi game chuyển sang WAITING
@@ -452,19 +378,8 @@ export default function GameClient({ gameCode }: GameClientProps) {
       setSelectedAnswer('');
       setCorrectAnswer('');
       setScoreEarned(0);
-      setShowCongrats(false);
-      setCompletedPlayers(new Set());
-      setServerCompletedPlayers([]);
-      setIsTransitioning(false);
     }
   }, [game?.status]);
-
-  const getCurrentPlayerQuestions = useCallback(() => {
-    if (!game?.playerQuestions || !currentUserId) return [];
-    
-    // Lọc câu hỏi cho player hiện tại
-    return game.playerQuestions.filter(pq => pq.playerId === currentUserId);
-  }, [game?.playerQuestions, currentUserId]);
 
   const renderMainContent = () => {
     // Kiểm tra null trước
@@ -475,51 +390,100 @@ export default function GameClient({ gameCode }: GameClientProps) {
     if (game.status === 'WAITING') {
       return (
         <div className="flex flex-col items-center justify-center space-y-8">
-          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-8 text-center shadow-lg border border-purple-100">
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold text-gray-800">
-                {isHost ? 'Đang chờ người chơi...' : 'Đang chờ host bắt đầu...'}
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 text-center shadow-lg border-2 border-red-500/70 relative overflow-hidden">
+            <div className="absolute inset-0 liberation-gradient opacity-5"></div>
+            
+            <div className="space-y-4 relative z-10">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <div className="h-6 w-6 vietnam-flag"></div>
+                <h2 className="text-2xl font-bold text-gray-800 heading-gradient">
+                {game.hostId === currentUserId ? 'Đang chờ người chơi...' : 'Đang chờ host bắt đầu...'}
               </h2>
+                <div className="h-6 w-6 vietnam-flag"></div>
+              </div>
               
-              {isHost && (
-                <div className="mb-4">
+              {game.hostId === currentUserId && (
+                <div className="mb-4 bg-white/50 p-4 rounded-lg border border-red-200">
+                  <div className="flex items-center justify-center gap-2 mb-3">
+                    <LiberationBadge label="Chọn chủ đề" />
+                  </div>
                   <label className="block text-gray-600 text-sm font-medium mb-2">
                     Chọn bộ câu hỏi cho trò chơi
                   </label>
                   <select 
                     value={selectedQuestionSet}
                     onChange={(e) => setSelectedQuestionSet(e.target.value)}
-                    className="w-full max-w-xs p-2 border rounded-lg bg-white/80 text-gray-700 border-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-300"
+                    className="w-full max-w-xs p-2 border rounded-lg bg-white/80 text-gray-700 border-red-200 focus:outline-none focus:ring-2 focus:ring-red-200 focus:border-red-300"
                   >
-                    <option value="A">Set A</option>
-                    <option value="B">Set B</option>
-                    <option value="C">Set C</option>
-                    <option value="D">Set D</option>
+                    <option value="A">Set A - Lịch sử Việt Nam (1945 - nay</option>
+                    <option value="B">Set B - Địa lý</option>
+                    <option value="C">Set C - Văn hóa</option>
+                    <option value="D">Set D - Khoa học và Công nghệ</option>
+                    <option value="E">Set E - Nghệ thuật và Giải trí</option>
+                    <option value="F">Set F - Thể thao</option>
+                    <option value="G">Set G - Đời sống và Sức khỏe</option>
+                    <option value="H">Set H - Câu hỏi Video</option>
+                    
                   </select>
                   <p className="mt-1 text-sm text-gray-500 italic">
-                    Mỗi b câu hỏi sẽ có chủ đề và độ khó khác nhau
+                    Mỗi bộ câu hỏi sẽ có chủ đề và độ khó khác nhau
                   </p>
                 </div>
               )}
 
-              <div className="flex flex-col items-center gap-2">
+              <div className="flex flex-col items-center gap-3">
                 <p className="text-gray-600">
-                  {isHost ? 'Chia sẻ mã game cho bạn bè:' : 'Mã game của bạn:'}
+                  {game.hostId === currentUserId ? 'Chia sẻ mã game cho bạn bè:' : 'Mã game của bạn:'}
                 </p>
-                <div className="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-lg">
-                  <span className="text-2xl font-mono font-semibold text-indigo-600">
+                <div className="flex items-center gap-2 bg-red-50 px-4 py-2 rounded-lg border border-red-200">
+                  <span className="text-2xl font-mono font-semibold text-red-600">
                     {game.gameCode}
                   </span>
+                  {game.hostId === currentUserId && (
+                    <button 
+                      className="text-red-500 hover:text-red-700 transition-colors"
+                      onClick={() => {
+                        navigator.clipboard.writeText(game.gameCode);
+                        alert('Đã sao chép mã game!');
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
               
-              {isHost && (
+              {game.hostId === currentUserId && (
+                <div className="mt-4 space-y-4">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="text-green-600 text-lg font-semibold">
+                      {game.players.filter(player => player.name !== 'Host').length} người chơi đã tham gia
+                    </div>
+                  </div>
                 <Button
                   onClick={handleStartGame}
-                  className="mt-4 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all"
+                    className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg shadow-md hover:shadow-lg transition-all"
                 >
                   Bắt đầu game
                 </Button>
+                  <div className="mt-2">
+                    <button 
+                      onClick={() => {
+                        const url = `${window.location.origin}/game/${game.gameCode}`;
+                        navigator.clipboard.writeText(url);
+                        alert('Đã sao chép liên kết mời!');
+                      }}
+                      className="text-red-600 hover:text-red-800 text-sm flex items-center justify-center gap-1 mx-auto"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      Chia sẻ liên kết mời
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -529,26 +493,212 @@ export default function GameClient({ gameCode }: GameClientProps) {
 
     if (game.status === 'FINISHED' || (currentUserId && game.completedPlayers.includes(currentUserId))) {
       return (
+        <>
+          <div className="bg-red-100/80 backdrop-blur-sm rounded-lg p-4 mb-6 text-center shadow-lg border-2 border-red-500/70 relative overflow-hidden">
+            <div className="absolute inset-0 liberation-gradient opacity-5"></div>
+            <div className="relative z-10">
+              <h2 className="text-2xl font-bold text-center mb-2 heading-gradient">
+                🌟 Thông tin phòng game 🌟
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 justify-center">
+                <div className="bg-red-50 rounded-lg p-4 text-center flex-1 border border-red-200">
+                  <p className="text-sm text-gray-600 mb-1">Mã phòng</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-xl font-mono font-semibold text-red-600">
+                      {game.gameCode}
+                    </span>
+                    <button 
+                      className="text-red-500 hover:text-red-700 transition-colors"
+                      onClick={() => {
+                        navigator.clipboard.writeText(game.gameCode);
+                        alert('Đã sao chép mã game!');
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="bg-green-50 rounded-lg p-4 text-center flex-1 border border-green-200">
+                  <p className="text-sm text-gray-600 mb-1">Người chơi</p>
+                  <p className="text-xl font-semibold text-green-600">
+                    {game.players.filter(player => player.name !== 'Host').length} người
+                  </p>
+                </div>
+                
+                <div className="bg-yellow-50 rounded-lg p-4 text-center flex-1 border border-yellow-200">
+                  <p className="text-sm text-gray-600 mb-1">Đã hoàn thành</p>
+                  <p className="text-xl font-semibold text-yellow-600">
+                    {game.completedPlayers.length}/{game.players.filter(player => player.name !== 'Host').length}
+                  </p>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => {
+                  const url = `${window.location.origin}/game/${game.gameCode}`;
+                  navigator.clipboard.writeText(url);
+                  alert('Đã sao chép liên kết mời!');
+                }}
+                className="text-red-600 hover:text-red-800 text-sm flex items-center justify-center gap-1 mx-auto mt-4"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                Chia sẻ liên kết mời
+              </button>
+            </div>
+          </div>
+          
         <GameResult 
           players={game.players}
-          isHost={isHost}
+          isHost={game.hostId === currentUserId}
           currentUserId={currentUserId}
           onRestart={handleRestart}
           completedPlayers={game.completedPlayers}
         />
+        </>
       );
     }
 
     if (game.status === 'PLAYING') {
-      if (isHost) {
+      if (game.hostId === currentUserId) {
+        // Giao diện đặc biệt cho host khi game đang chơi
+        const activePlayers = game.players.filter(player => player.name !== 'Host');
+        const sortedPlayers = [...activePlayers].sort((a, b) => b.score - a.score);
+        const completedCount = game.completedPlayers.length;
+        
         return (
-          <GameResult 
-            players={game.players}
-            isHost={true}
-            currentUserId={currentUserId}
-            onRestart={handleRestart}
-            completedPlayers={game.completedPlayers}
-          />
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 shadow-lg border-2 border-red-500/70 relative overflow-hidden">
+            <div className="absolute inset-0 liberation-gradient opacity-5"></div>
+            
+            <div className="relative z-10">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <div className="h-5 w-5 vietnam-flag"></div>
+                <h2 className="text-2xl font-bold heading-gradient text-center">
+                  Quản lý phòng game
+                </h2>
+                <div className="h-5 w-5 vietnam-flag"></div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 justify-center mb-6">
+                <div className="bg-red-50 rounded-lg p-4 text-center flex-1 border border-red-200">
+                  <p className="text-sm text-gray-600 mb-1">Mã phòng</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-xl font-mono font-semibold text-red-600">
+                      {game.gameCode}
+                    </span>
+                    <button 
+                      className="text-red-500 hover:text-red-700 transition-colors"
+                      onClick={() => {
+                        navigator.clipboard.writeText(game.gameCode);
+                        alert('Đã sao chép mã game!');
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="bg-green-50 rounded-lg p-4 text-center flex-1 border border-green-200">
+                  <p className="text-sm text-gray-600 mb-1">Người chơi</p>
+                  <p className="text-xl font-semibold text-green-600">
+                    {activePlayers.length} người
+                  </p>
+                </div>
+                
+                <div className="bg-yellow-50 rounded-lg p-4 text-center flex-1 border border-yellow-200">
+                  <p className="text-sm text-gray-600 mb-1">Đã hoàn thành</p>
+                  <p className="text-xl font-semibold text-yellow-600">
+                    {completedCount}/{activePlayers.length}
+                  </p>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => {
+                  const url = `${window.location.origin}/game/${game.gameCode}`;
+                  navigator.clipboard.writeText(url);
+                  alert('Đã sao chép liên kết mời!');
+                }}
+                className="text-red-600 hover:text-red-800 text-sm flex items-center justify-center gap-1 mx-auto mb-6"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                Chia sẻ liên kết mời
+              </button>
+              
+              <div className="mb-6">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <LiberationBadge label="Bảng xếp hạng" />
+                </div>
+                <div className="bg-white/50 p-4 rounded-lg border border-red-200 max-h-60 overflow-y-auto pr-2">
+                  {sortedPlayers.length > 0 ? (
+                    sortedPlayers.map((player, index) => (
+                      <div 
+                        key={player.id}
+                        className={`
+                          p-3 mb-2 rounded-lg transition-all
+                          ${index === 0 
+                            ? 'bg-yellow-50 border border-yellow-200' 
+                            : index === 1
+                              ? 'bg-gray-50 border border-gray-200'
+                              : index === 2
+                                ? 'bg-amber-50 border border-amber-200'
+                                : 'bg-white/60 border border-gray-100'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">
+                              {index === 0 && '🥇'}
+                              {index === 1 && '🥈'}
+                              {index === 2 && '🥉'}
+                              {index > 2 && `${index + 1}.`}
+                            </span>
+                            <span className="font-medium">
+                              {player.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center">
+                            <span className="font-bold text-blue-600">
+                              {player.score || 0}
+                            </span>
+                            {game.completedPlayers.includes(player.id) && (
+                              <span className="ml-2 text-green-500" title="Đã hoàn thành">
+                                ✓
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">Chưa có người chơi nào tham gia</p>
+                  )}
+                </div>
+              </div>
+              
+              {completedCount === activePlayers.length && activePlayers.length > 0 && (
+                <div className="text-center">
+                  <Button
+                    onClick={handleRestart}
+                    className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg
+                      shadow-md hover:shadow-lg transition-all duration-200"
+                  >
+                    Kết thúc và chơi lại
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
         );
       }
 
@@ -562,6 +712,8 @@ export default function GameClient({ gameCode }: GameClientProps) {
             options={currentQuestionData.options}
             image={currentQuestionData.image}
             answerImage={currentQuestionData.answerImage}
+            answerExplanation={currentQuestionData.answerExplanation}
+            videoUrl={currentQuestionData.videoUrl}
             timeLeft={timeLeft}
             onAnswer={handleAnswer}
             disabled={hasAnswered}
@@ -593,16 +745,10 @@ export default function GameClient({ gameCode }: GameClientProps) {
         const timeElapsed = Date.now() - parseInt(lastQuestionTime);
         
         // Nếu đã trôi qua 60 giây
-        if (timeElapsed >= 60000 && !canShowCongrats) {
-          setCanShowCongrats(true);
+        if (timeElapsed >= 60000) {
           if (currentUserId) {
-            setCompletedPlayers(prev => new Set([...prev, currentUserId]));
+            setCompletedPlayers((prev: Set<string>) => new Set([...prev, currentUserId]));
           }
-        }
-        
-        // Nếu đã trôi qua 80 giây
-        if (timeElapsed >= 80000) {
-          setShowCongrats(true);
           // Xóa dữ liệu localStorage
           localStorage.removeItem('lastQuestionAnsweredTime');
           localStorage.removeItem('isLastQuestion');
@@ -613,7 +759,7 @@ export default function GameClient({ gameCode }: GameClientProps) {
     // Kiểm tra mỗi giây
     const interval = setInterval(checkLastQuestionTime, 1000);
     return () => clearInterval(interval);
-  }, [canShowCongrats, currentUserId]);
+  }, [currentUserId]);
 
   // Reset state khi component unmount
   useEffect(() => {
@@ -622,6 +768,21 @@ export default function GameClient({ gameCode }: GameClientProps) {
       localStorage.removeItem('isLastQuestion');
     };
   }, []);
+
+  // Add debug logging useEffect
+  useEffect(() => {
+    if (game && currentUserId) {
+      console.log('GameClient - Debug Info:', {
+        gameId: game.id,
+        gameCode: game.gameCode,
+        hostId: game.hostId,
+        currentUserId,
+        isHost: game.hostId === currentUserId,
+        playersCount: game.players.length,
+        players: game.players.map(p => ({ id: p.id, name: p.name, isHost: p.id === game.hostId }))
+      });
+    }
+  }, [game, currentUserId]);
 
   if (loading) {
     return (
@@ -654,16 +815,23 @@ export default function GameClient({ gameCode }: GameClientProps) {
 
   return (
     <div className="p-4 max-w-7xl mx-auto">
+      <LiberationBanner className="mb-6 hidden md:block" />
+      
       <div className="grid lg:grid-cols-3 gap-6 md:grid-cols-1">
+        {/* Main content - đổi thứ tự để nội dung chính hiển thị trước trên mobile */}
+        <div className="lg:col-span-2 order-2 lg:order-1">
+          {renderMainContent()}
+        </div>
+        
         {/* Sidebar */}
-        <div className="lg:col-span-1 md:order-2">
-          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 mb-4 shadow-sm border border-purple-100">
+        <div className="lg:col-span-1 order-1 lg:order-2 mb-6 lg:mb-0">
+          <div className="bg-white/80 backdrop-blur-sm rounded-lg p-4 mb-4 shadow-sm border border-red-200">
             <div className="flex items-center justify-between">
               <span className="text-gray-600">Trạng thái:</span>
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                game?.status === 'WAITING' ? 'bg-yellow-100 text-yellow-800' :
-                game?.status === 'PLAYING' ? 'bg-green-100 text-green-800' :
-                'bg-gray-100 text-gray-800'
+                game?.status === 'WAITING' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
+                game?.status === 'PLAYING' ? 'bg-green-100 text-green-800 border border-green-200' :
+                'bg-gray-100 text-gray-800 border border-gray-200'
               }`}>
                 {game?.status === 'WAITING' && 'Đang chờ'}
                 {game?.status === 'PLAYING' && 'Đang chơi'}
@@ -671,16 +839,18 @@ export default function GameClient({ gameCode }: GameClientProps) {
               </span>
             </div>
           </div>
+          {/* Debug hostId and currentUserId */}
+          {(() => { console.log('GameClient - passing to PlayerList:', { hostId: game?.hostId, currentUserId }); return null; })()}
           <PlayerList 
             players={game?.players || []} 
             currentUserId={currentUserId}
+            hostId={game?.hostId}
           />
         </div>
-
-        {/* Main content */}
-        <div className="lg:col-span-2 md:order-1">
-          {renderMainContent()}
         </div>
+
+      <div className="mt-6 text-center">
+        <LiberationBadge label="Giải Phóng Miền Nam 30/4" className="mx-auto" />
       </div>
     </div>
   )

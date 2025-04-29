@@ -1,49 +1,74 @@
-import { prisma } from '@/prisma/prisma'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
 
-function generateGameCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase()
+// Tạo mã game ngẫu nhiên có độ dài 6, chỉ bao gồm chữ cái hoa và số
+function generateGameCode(): string {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  
+  console.log('Generated game code:', result);
+  return result;
 }
 
-export async function POST(request: Request) {
+// POST /api/game/create
+export async function POST(request: NextRequest) {
   try {
-    // 1. Parse request body
-    const body = await request.json()
-    const hostId = body.hostId
+    const body = await request.json();
+    console.log('Create game request body:', body);
+    
+    const { hostId } = body;
 
     if (!hostId) {
       return NextResponse.json({
+        success: false,
         error: 'Host ID is required'
-      }, {
-        status: 400
-      })
+      }, { status: 400 });
     }
 
-    // 2. Create game
+    // Tạo mã game
+    const gameCode = generateGameCode();
+    console.log('Creating game with code:', gameCode);
+
+    // Tạo game trong database
     const game = await prisma.game.create({
       data: {
-        gameCode: generateGameCode(),
+        gameCode,
         hostId,
         status: 'WAITING',
-        currentRound: 0,
-        questions: {
-          create: []
+        players: {
+          create: {
+            name: 'Host',
+            score: 0,
+            timeSpent: 0
+          }
         }
+      },
+      include: {
+        players: true
       }
-    })
+    });
 
-    // 3. Return response
+    console.log('Game created successfully:', {
+      id: game.id,
+      gameCode: game.gameCode,
+      hostId: game.hostId
+    });
+
     return NextResponse.json({
       success: true,
-      game
-    })
+      data: { game }
+    });
 
   } catch (error) {
-    console.error('API Error:', error)
-    return NextResponse.json({
-      error: 'Internal server error'
-    }, {
-      status: 500
-    })
+    console.error('Create game error:', error);
+    
+    return NextResponse.json(
+      { success: false, error: 'Failed to create game' },
+      { status: 500 }
+    );
   }
 }
